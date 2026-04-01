@@ -364,10 +364,37 @@ def streaming_tts(text: str, **kwargs) -> Iterator[np.ndarray]:
 async def websocket_stream(ws: WebSocket) -> None:
     await ws.accept()
     text = ws.query_params.get("text", "")
-    print(f"Client connected, text={text!r}")
     cfg_param = ws.query_params.get("cfg")
     steps_param = ws.query_params.get("steps")
     voice_param = ws.query_params.get("voice")
+
+    if not text:
+        try:
+            init_raw = await ws.receive_text()
+        except WebSocketDisconnect:
+            print("Client disconnected before sending init payload")
+            return
+        except Exception as exc:
+            print(f"Error receiving init payload: {exc}")
+            await ws.close(code=1003, reason="Invalid init payload")
+            return
+
+        try:
+            init_payload = json.loads(init_raw)
+            if isinstance(init_payload, dict):
+                text = str(init_payload.get("text", ""))
+                if "cfg" in init_payload and init_payload.get("cfg") is not None:
+                    cfg_param = str(init_payload.get("cfg"))
+                if "steps" in init_payload and init_payload.get("steps") is not None:
+                    steps_param = str(init_payload.get("steps"))
+                if "voice" in init_payload and init_payload.get("voice"):
+                    voice_param = str(init_payload.get("voice"))
+            else:
+                text = init_raw
+        except json.JSONDecodeError:
+            text = init_raw
+
+    print(f"Client connected, text_length={len(text or '')}")
 
     try:
         cfg_scale = float(cfg_param) if cfg_param is not None else 1.5
@@ -381,6 +408,19 @@ async def websocket_stream(ws: WebSocket) -> None:
             inference_steps = None
     except ValueError:
         inference_steps = None
+
+    if not text.strip():
+        try:
+            await ws.send_text(json.dumps({
+                "type": "log",
+                "event": "backend_error",
+                "data": {"message": "Empty text"},
+                "timestamp": get_timestamp(),
+            }))
+        except Exception:
+            pass
+        await ws.close(code=1008, reason="Empty text")
+        return
 
     service: StreamingTTSService = app.state.tts_service
     lock: asyncio.Lock = app.state.websocket_lock

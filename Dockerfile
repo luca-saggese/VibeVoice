@@ -14,6 +14,8 @@ COPY . .
 RUN python -m pip install --upgrade pip setuptools wheel && \
     python -m pip install .
 
+ENV HF_HOME=/huggingface
+
 EXPOSE 3000
 
 CMD ["sh", "-c", "python demo/vibevoice_realtime_demo.py --port ${PORT} --model_path ${MODEL_PATH} --device ${MODEL_DEVICE}"]
