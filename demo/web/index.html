@@ -359,20 +359,6 @@
           <input id="inferenceSteps" type="range" min="5" max="20" step="1" value="5" />
           <span class="range-value" id="stepsValue">5</span>
         </label>
-        <label class="range-control">
-          <span>Sampling</span>
-          <input id="doSample" type="checkbox" checked />
-        </label>
-        <label class="range-control">
-          <span>Temperature</span>
-          <input id="temperature" type="range" min="0.0" max="1.5" step="0.05" value="0.8" />
-          <span class="range-value" id="temperatureValue">0.80</span>
-        </label>
-        <label class="range-control">
-          <span>Top-p</span>
-          <input id="topP" type="range" min="0.5" max="1.0" step="0.01" value="0.95" />
-          <span class="range-value" id="topPValue">0.95</span>
-        </label>
         <button id="resetControls" type="button" class="secondary-btn">Reset Controls</button>
       </div>
 
@@ -415,14 +401,9 @@
   const controlBtn = document.getElementById('playback');
   const cfgSelect = document.getElementById('cfgScale');
   const stepsSelect = document.getElementById('inferenceSteps');
-  const doSampleCheckbox = document.getElementById('doSample');
-  const temperatureSelect = document.getElementById('temperature');
-  const topPSelect = document.getElementById('topP');
   const voiceSelect = document.getElementById('voiceSelect');
   const cfgValueLabel = document.getElementById('cfgValue');
   const stepsValueLabel = document.getElementById('stepsValue');
-  const temperatureValueLabel = document.getElementById('temperatureValue');
-  const topPValueLabel = document.getElementById('topPValue');
   const modelGeneratedLabel = document.getElementById('modelGenerated');
   const playbackElapsedLabel = document.getElementById('playbackElapsed');
   const logOutput = document.getElementById('logOutput');
@@ -508,30 +489,10 @@
     stepsValueLabel.textContent = Number(stepsSelect.value).toString();
   };
 
-  const updateTemperatureDisplay = () => {
-    temperatureValueLabel.textContent = Number(temperatureSelect.value).toFixed(2);
-  };
-
-  const updateTopPDisplay = () => {
-    topPValueLabel.textContent = Number(topPSelect.value).toFixed(2);
-  };
-
-  const syncSamplingControls = () => {
-    const enabled = !!doSampleCheckbox.checked;
-    temperatureSelect.disabled = !enabled;
-    topPSelect.disabled = !enabled;
-  };
-
   cfgSelect.addEventListener('input', updateCfgDisplay);
   stepsSelect.addEventListener('input', updateStepsDisplay);
-  doSampleCheckbox.addEventListener('change', syncSamplingControls);
-  temperatureSelect.addEventListener('input', updateTemperatureDisplay);
-  topPSelect.addEventListener('input', updateTopPDisplay);
   updateCfgDisplay();
   updateStepsDisplay();
-  updateTemperatureDisplay();
-  updateTopPDisplay();
-  syncSamplingControls();
 
   const pad2 = value => value.toString().padStart(2, '0');
   const pad3 = value => value.toString().padStart(3, '0');
@@ -747,15 +708,9 @@
   resetBtn.addEventListener('click', () => {
     cfgSelect.value = '1.5';
     stepsSelect.value = '5';
-    doSampleCheckbox.checked = true;
-    temperatureSelect.value = '0.8';
-    topPSelect.value = '0.95';
     updateCfgDisplay();
     updateStepsDisplay();
-    updateTemperatureDisplay();
-    updateTopPDisplay();
-    syncSamplingControls();
-    appendLog('[Frontend] Controls reset to defaults (CFG=1.5, Steps=5, Sampling=on, Temp=0.80, Top-p=0.95)');
+    appendLog('[Frontend] Controls reset to defaults (CFG=1.5, Steps=5)');
   });
 
   if (promptInput) {
@@ -946,17 +901,12 @@
     const textValue = promptInput?.value || '';
     const cfgValue = Number(cfgSelect.value);
     const stepsValue = Number(stepsSelect.value);
-    const doSampleValue = !!doSampleCheckbox.checked;
-    const temperatureValue = Number(temperatureSelect.value);
-    const topPValue = Number(topPSelect.value);
     const voiceValue = voiceSelect.value || '';
 
     clearLogs();
     const cfgDisplay = Number.isFinite(cfgValue) ? cfgValue.toFixed(3) : 'default';
     const stepsDisplay = Number.isFinite(stepsValue) ? stepsValue : 'default';
-    const tempDisplay = Number.isFinite(temperatureValue) ? temperatureValue.toFixed(2) : 'default';
-    const topPDisplay = Number.isFinite(topPValue) ? topPValue.toFixed(2) : 'default';
-    appendLog(`[Frontend] Start button clicked, CFG=${cfgDisplay}, Steps=${stepsDisplay}, Sampling=${doSampleValue ? 'on' : 'off'}, Temp=${tempDisplay}, Top-p=${topPDisplay}, Speaker=${voiceValue || 'default'}`);
+    appendLog(`[Frontend] Start button clicked, CFG=${cfgDisplay}, Steps=${stepsDisplay}, Speaker=${voiceValue || 'default'}`);
     setModelGenerated(0);
     setPlaybackElapsed(0);
 
@@ -979,9 +929,6 @@
         text: textValue,
         cfg: Number.isNaN(cfgValue) ? null : Number(cfgValue.toFixed(3)),
         steps: Number.isNaN(stepsValue) ? null : Number(stepsValue),
-        do_sample: doSampleValue,
-        temperature: Number.isNaN(temperatureValue) ? null : Number(temperatureValue.toFixed(2)),
-        top_p: Number.isNaN(topPValue) ? null : Number(topPValue.toFixed(2)),
         voice: voiceValue || null,
       };
       socket.send(JSON.stringify(startPayload));
