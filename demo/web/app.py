@@ -3,6 +3,7 @@ import builtins
 import asyncio
 import json
 import os
+import re
 import threading
 import traceback
 from pathlib import Path
@@ -196,6 +197,14 @@ class StreamingTTSService:
         }
         return prepared
 
+    def _preprocess_text_for_expression(self, text: str) -> str:
+        text = text.replace("’", "'").replace("“", '"').replace("”", '"')
+        text = text.replace("—", ", ").replace("–", ", ")
+        text = re.sub(r"\s+", " ", text).strip()
+        text = re.sub(r"([,;:])(\S)", r"\1 \2", text)
+        text = re.sub(r"([.!?])(\S)", r"\1 \2", text)
+        return text
+
     def _run_generation(
         self,
         inputs,
@@ -235,9 +244,9 @@ class StreamingTTSService:
         self,
         text: str,
         cfg_scale: float = 1.5,
-        do_sample: bool = False,
-        temperature: float = 0.9,
-        top_p: float = 0.9,
+        do_sample: bool = True,
+        temperature: float = 0.8,
+        top_p: float = 0.95,
         refresh_negative: bool = True,
         inference_steps: Optional[int] = None,
         voice_key: Optional[str] = None,
@@ -246,7 +255,7 @@ class StreamingTTSService:
     ) -> Iterator[np.ndarray]:
         if not text.strip():
             return
-        text = text.replace("’", "'")
+        text = self._preprocess_text_for_expression(text)
         selected_voice, prefilled_outputs = self._get_voice_resources(voice_key)
 
         def emit(event: str, **payload: Any) -> None:
@@ -367,6 +376,9 @@ async def websocket_stream(ws: WebSocket) -> None:
     cfg_param = ws.query_params.get("cfg")
     steps_param = ws.query_params.get("steps")
     voice_param = ws.query_params.get("voice")
+    do_sample_param = ws.query_params.get("do_sample")
+    temperature_param = ws.query_params.get("temperature")
+    top_p_param = ws.query_params.get("top_p")
 
     if not text:
         try:
@@ -389,6 +401,12 @@ async def websocket_stream(ws: WebSocket) -> None:
                     steps_param = str(init_payload.get("steps"))
                 if "voice" in init_payload and init_payload.get("voice"):
                     voice_param = str(init_payload.get("voice"))
+                if "do_sample" in init_payload and init_payload.get("do_sample") is not None:
+                    do_sample_param = str(init_payload.get("do_sample"))
+                if "temperature" in init_payload and init_payload.get("temperature") is not None:
+                    temperature_param = str(init_payload.get("temperature"))
+                if "top_p" in init_payload and init_payload.get("top_p") is not None:
+                    top_p_param = str(init_payload.get("top_p"))
             else:
                 text = init_raw
         except json.JSONDecodeError:
@@ -408,6 +426,28 @@ async def websocket_stream(ws: WebSocket) -> None:
             inference_steps = None
     except ValueError:
         inference_steps = None
+
+    do_sample = True
+    if do_sample_param is not None:
+        do_sample = str(do_sample_param).strip().lower() not in {"0", "false", "no", "off"}
+
+    try:
+        temperature = float(temperature_param) if temperature_param is not None else 0.8
+    except ValueError:
+        temperature = 0.8
+    if temperature < 0.0:
+        temperature = 0.0
+    if temperature > 2.0:
+        temperature = 2.0
+
+    try:
+        top_p = float(top_p_param) if top_p_param is not None else 0.95
+    except ValueError:
+        top_p = 0.95
+    if top_p <= 0.0:
+        top_p = 0.95
+    if top_p > 1.0:
+        top_p = 1.0
 
     if not text.strip():
         try:
@@ -473,6 +513,9 @@ async def websocket_stream(ws: WebSocket) -> None:
             cfg_scale=cfg_scale,
             inference_steps=inference_steps,
             voice=voice_param,
+            do_sample=do_sample,
+            temperature=temperature,
+            top_p=top_p,
         )
 
         stop_signal = threading.Event()
@@ -480,6 +523,9 @@ async def websocket_stream(ws: WebSocket) -> None:
         iterator = streaming_tts(
             text,
             cfg_scale=cfg_scale,
+            do_sample=do_sample,
+            temperature=temperature,
+            top_p=top_p,
             inference_steps=inference_steps,
             voice_key=voice_param,
             log_callback=enqueue_log,
