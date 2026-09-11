@@ -10,6 +10,7 @@
 **Report:** [VibeVoice-ASR-Report](https://arxiv.org/pdf/2601.18184)<br>
 **Finetuning:** [finetune-guide](../finetuning-asr/README.md)<br>
 **vLLM:** [vLLM-asr](./vibevoice-vllm-asr.md)<br>
+**Transformers:** [VibeVoice-ASR-HF](https://huggingface.co/microsoft/VibeVoice-ASR-HF)<br>
 
 
 ## 🔥 Key Features
@@ -24,7 +25,7 @@
   The model jointly performs ASR, diarization, and timestamping, producing a structured output that indicates *who* said *what* and *when*.
   
 - **🌍 Multilingual & Code-Switching Support**:
-  It supports over 50 languages, requires no explicit language setting, and natively handles code-switching within and across utterances. Language distribution can be found [here](#language-distribution).
+  It supports over 50 languages, requires no explicit language setting, and natively handles code-switching within and across utterances. See the [Language distribution](#language-distribution).
 
 
 ## 🏗️ Model Architecture
@@ -51,7 +52,7 @@ https://github.com/user-attachments/assets/acde5602-dc17-4314-9e3b-c630bc84aefa
 
 
 ## Installation
-We recommend to use NVIDIA Deep Learning Container to manage the CUDA environment. 
+We recommend using NVIDIA Deep Learning Container to manage the CUDA environment. 
 
 1. Launch docker
 ```bash
@@ -83,7 +84,7 @@ python demo/vibevoice_asr_gradio_demo.py --model_path microsoft/VibeVoice-ASR --
 
 ### Usage 2: Inference from files directly
 ```bash
-python demo/vibevoice_asr_inference_from_file.py --model_path microsoft/VibeVoice-ASR --audio_files [add a audio path here] 
+python demo/vibevoice_asr_inference_from_file.py --model_path microsoft/VibeVoice-ASR --audio_files [add an audio path here] 
 ```
 
 
